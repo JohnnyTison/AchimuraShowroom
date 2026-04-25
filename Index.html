@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AchimuraShowroom V10 FINAL STUDIO</title>
+<meta name="description" content="AchimuraShowroom V10 - Final Studio Museum System 3D">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+:root{--bg:#05060a;--card:#0e1018;--line:#26263a;--txt:#f3f6ff;--muted:#9aa4b2;--a:#00e5ff;--b:#ff2e6a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,sans-serif;background:radial-gradient(circle at 30% 0%,#15152a,var(--bg));color:var(--txt);overflow:hidden}
+.wrap{display:flex;width:100%;height:100vh}
+
+/* LOGIN */
+.login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:50}
+.box{background:#0f1018;border:1px solid var(--line);padding:20px;border-radius:18px;width:340px}
+input{width:100%;padding:10px;margin-top:10px;border-radius:10px;border:1px solid var(--line);background:#0b0c12;color:white}
+.btn{margin-top:10px;width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:#11121a;color:white;cursor:pointer}
+
+/* UI */
+.sidebar{width:320px;background:#0b0c12;border-right:1px solid var(--line);padding:14px;display:none;flex-direction:column;gap:10px}
+.sidebar.active{display:flex}
+.brand{font-family:Orbitron;font-weight:900}
+
+.stage{flex:1;position:relative}
+.room{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-wrap:wrap;gap:20px;padding:20px;overflow:auto}
+.room.active{display:flex}
+.card{width:340px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:10px}
+model-viewer{width:100%;height:280px;border-radius:14px;background:#0d0e16}
+.title{font-family:Orbitron;font-size:18px;margin:8px 0}
+.desc{color:var(--muted);font-size:13px}
+
+.topbar{position:absolute;top:10px;right:10px;display:flex;gap:10px;z-index:10}
+.topbar button{background:#11121a;border:1px solid var(--line);color:white;padding:8px 10px;border-radius:10px;cursor:pointer}
+
+.badge{position:fixed;top:10px;left:10px;background:#11121a;border:1px solid var(--line);padding:8px 10px;border-radius:10px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="badge" id="mode">MODE: LOCKED</div>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+<div class="box">
+<h2 style="font-family:Orbitron">V10 FINAL STUDIO</h2>
+<p style="color:#9aa4b2;font-size:12px">Accès administrateur requis</p>
+<input id="pass" type="password" placeholder="Mot de passe">
+<button class="btn" onclick="login()">Entrer</button>
+</div>
+</div>
+
+<div class="wrap">
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+<div class="brand">ACHIMURA STUDIO</div>
+
+<input id="url" placeholder="models/model.glb">
+<input id="name" placeholder="Nom">
+<button class="btn" onclick="addModel()">➕ Ajouter œuvre</button>
+
+<hr style="border:1px solid #1e1f2e">
+
+<div id="rooms"></div>
+<button class="btn" onclick="addRoom()">➕ Salle</button>
+
+<hr style="border:1px solid #1e1f2e">
+<button class="btn" onclick="exportMuseum()">📦 Export JSON</button>
+<button class="btn" onclick="importMuseum()">📥 Import JSON</button>
+</div>
+
+<!-- STAGE -->
+<div class="stage" id="stage"></div>
+
+</div>
+
+<script>
+const PASS="achimura";
+let data=[];
+let current=0;
+
+function login(){
+if(document.getElementById('pass').value===PASS){
+loginOK();
+}else alert('Accès refusé');
+}
+
+function loginOK(){
+document.getElementById('login').style.display='none';
+document.getElementById('sidebar').classList.add('active');
+load();
+render();
+updateMode('ADMIN');
+}
+
+function updateMode(m){document.getElementById('mode').innerText="MODE: "+m}
+
+function room(n){return{name:n||('Salle '+(data.length+1)),items:[]}}
+
+function render(){
+const stage=document.getElementById('stage');stage.innerHTML="";
+
+data.forEach((r,i)=>{
+const d=document.createElement('div');d.className='room'+(i===current?' active':'');
+d.innerHTML=`<div style='display:flex;flex-wrap:wrap;gap:20px;justify-content:center;width:100%;padding:20px'>
+${r.items.map(o=>`
+<div class='card'>
+<model-viewer src='${o.url}' camera-controls auto-rotate></model-viewer>
+<div class='title'>${o.name}</div>
+<div class='desc'>Œuvre</div>
+</div>`).join('')}
+</div>`;
+stage.appendChild(d);
+});
+
+const r=document.getElementById('rooms');r.innerHTML='';
+data.forEach((x,i)=>{
+const b=document.createElement('button');b.className='btn';b.textContent=x.name;b.onclick=()=>{current=i;render()};r.appendChild(b);
+});
+}
+
+function addRoom(){data.push(room());render()}
+
+function addModel(){
+const u=document.getElementById('url').value;
+const n=document.getElementById('name').value||'Œuvre';
+if(!u)return;
+data[current].items.push({url:u,name:n});render();
+}
+
+function save(){localStorage.setItem('achimura_v10',JSON.stringify(data))}
+function load(){const d=localStorage.getItem('achimura_v10');if(d)data=JSON.parse(d);else data=[room('Hall Principal')]}
+
+function exportMuseum(){
+const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='museum.json';a.click();
+}
+
+function importMuseum(){
+const inp=document.createElement('input');inp.type='file';
+inp.onchange=e=>{
+const f=e.target.files[0];const r=new FileReader();
+r.onload=()=>{data=JSON.parse(r.result);render()};r.readAsText(f);
+};inp.click();
+}
+
+// init
+load();
+if(data.length===0)data=[room('Hall Principal')];render();
+</script>
+
+</body>
+</html>
